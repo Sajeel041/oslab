@@ -1,0 +1,78 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
+
+#define BUFFER_SIZE 5
+#define NUM_ITEMS 10
+
+int buffer[BUFFER_SIZE];
+int in = 0, out = 0;
+int count = 0; // number of items in buffer
+
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t full = PTHREAD_COND_INITIALIZER;   // buffer is full
+pthread_cond_t empty = PTHREAD_COND_INITIALIZER;  // buffer is empty
+
+void *producer(void *arg) {
+    int id = *(int *)arg;
+    for (int i = 1; i <= NUM_ITEMS; i++) {
+        pthread_mutex_lock(&lock);
+
+        while (count == BUFFER_SIZE) { // buffer full, wait
+            pthread_cond_wait(&full, &lock);
+        }
+
+        // produce item
+        buffer[in] = i;
+        printf("Producer %d produced %d at %d\n", id, i, in);
+        in = (in + 1) % BUFFER_SIZE;
+        count++;
+
+        // signal consumer
+        pthread_cond_signal(&empty);
+
+        pthread_mutex_unlock(&lock);
+        sleep(1); // simulate work
+    }
+    pthread_exit(NULL);
+}
+
+void *consumer(void *arg) {
+    int id = *(int *)arg;
+    for (int i = 1; i <= NUM_ITEMS; i++) {
+        pthread_mutex_lock(&lock);
+
+        while (count == 0) { // buffer empty, wait
+            pthread_cond_wait(&empty, &lock);
+        }
+
+        // consume item
+        int item = buffer[out];
+        printf("\tConsumer %d consumed %d at %d\n", id, item, out);
+        out = (out + 1) % BUFFER_SIZE;
+        count--;
+
+        // signal producer
+        pthread_cond_signal(&full);
+
+        pthread_mutex_unlock(&lock);
+        sleep(1); // simulate work
+    }
+    pthread_exit(NULL);
+}
+
+int main() {
+    pthread_t prod, cons;
+    int pid = 1, cid = 1;
+
+    pthread_create(&prod, NULL, producer, &pid);
+    pthread_create(&cons, NULL, consumer, &cid);
+
+    pthread_join(prod, NULL);
+    pthread_join(cons, NULL);
+
+    printf("All items produced and consumed.\n");
+
+    return 0;
+}
