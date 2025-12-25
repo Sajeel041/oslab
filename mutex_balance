@@ -1,0 +1,38 @@
+#include<unistd.h>
+#include<pthread.h>
+#include<stdlib.h>
+//Write a program with multiple threads incrementing and
+// decrementing a shared resource (e.g., a bank account balance).
+// Use a mutex to ensure that the balance is correctly updated
+int balance=1000;
+pthread_mutex_t lock= PTHREAD_MUTEX_INITIALIZER;
+
+void *deposite(void * arg){
+        int *val= (int *)arg;
+        pthread_mutex_lock(&lock);
+        balance+=*val;
+        pthread_mutex_unlock(&lock);
+        pthread_exit(NULL);
+}
+void *withdraw( void *arg){
+        int * val=(int * )arg;
+        pthread_mutex_lock(&lock);
+        balance-=*val;
+        pthread_mutex_unlock(&lock);
+pthread_exit(NULL);
+}
+
+int main(){
+        pthread_t p1,p2,p3,p4;
+        int val=45;
+        pthread_create(&p1,NULL,deposite,(void *)&val);
+        pthread_create(&p2, NULL, withdraw, (void *)&val);
+pthread_create(&p3, NULL, deposite,(void *) &val);
+pthread_create(&p4, NULL, withdraw, (void *)&val);
+pthread_join(p1, NULL);
+    pthread_join(p2, NULL);
+pthread_join(p3,NULL);
+    pthread_join(p4, NULL);
+printf("the result is :%d\n",balance);
+return 0;
+}
