@@ -1,0 +1,59 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
+
+#define NUM_THREADS 5
+#define STEPS 3
+
+pthread_barrier_t barrier;
+
+void *thread_function(void *arg) {
+    int thread_id = *(int *)arg;
+
+    for (int step = 1; step <= STEPS; step++) {
+        printf("Thread %d: Working on step %d\n", thread_id, step);
+        sleep(1); // simulate work
+
+        // Wait at barrier
+        int res = pthread_barrier_wait(&barrier);
+        if (res == PTHREAD_BARRIER_SERIAL_THREAD) {
+            printf("Thread %d: All threads reached step %d\n", thread_id, step);
+        } else if (res != 0) {
+            perror("pthread_barrier_wait failed");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    printf("Thread %d: Finished all steps\n", thread_id);
+    free(arg);
+    return NULL;
+}
+
+int main() {
+    pthread_t threads[NUM_THREADS];
+
+    // Initialize barrier
+    if (pthread_barrier_init(&barrier, NULL, NUM_THREADS)) {
+        perror("Could not create barrier");
+        exit(EXIT_FAILURE);
+    }
+
+    // Create threads
+    for (int i = 0; i < NUM_THREADS; i++) {
+        int *id = malloc(sizeof(int));
+        *id = i + 1;
+        pthread_create(&threads[i], NULL, thread_function, id);
+    }
+
+    // Wait for all threads to finish
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    // Destroy barrier
+    pthread_barrier_destroy(&barrier);
+
+    printf("All threads finished.\n");
+    return 0;
+}
