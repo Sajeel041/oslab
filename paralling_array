@@ -1,0 +1,56 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<unistd.h>
+#include<sys/types.h>
+#include<sys/wait.h>
+#include<pthread.h>
+typedef struct obj{
+int *array;
+int start;
+int end;
+} obj;
+int total_sum=0;
+pthread_mutex_t lock= PTHREAD_MUTEX_INITIALIZER;
+void *fun(void *arg){
+obj *thread_data= (obj *)arg;
+int part_sum=0;
+for(int i = thread_data->start;i<thread_data->end;i++){
+        part_sum+=thread_data->array[i];
+}
+pthread_mutex_lock(&lock);
+total_sum+=part_sum;
+pthread_mutex_unlock(&lock);
+pthread_exit(NULL);
+}
+int main(){
+        int num,size;
+        scanf("%d,%d",&num,&size);
+        int *arr = (int *)malloc(size*sizeof(int));
+        for (int i=0;i<size;i++){
+        arr[i]=i+1;}
+        pthread_t threads[num];
+        obj thread_data[num];
+        int chunks;
+        chunks=size/num;
+        for (int i = 0; i < num; i++) {
+        thread_data[i].array = arr;
+        thread_data[i].start = i * chunks;
+
+        // FIX 7: Use 'chunks' consistently (you had chunk_size)
+        // Also: ensure the last thread takes the remainder if size isn't p>
+        if (i == num - 1) {
+            thread_data[i].end = size;
+        } else {
+            thread_data[i].end = (i + 1) * chunks;
+        }
+
+        // FIX 8: Your function name is 'fun', not 'func'
+        pthread_create(&threads[i], NULL, fun, &thread_data[i]);
+    }
+
+        for (int i = 0; i < num; i++) {
+        pthread_join(threads[i], NULL);
+            }
+        printf("TOTAL SUM IS : %d",total_sum);
+return 0;
+}
